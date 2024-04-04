@@ -9,22 +9,6 @@ import (
 	"github.com/gorilla/mux"
 )
 
-type Car struct {
-	Id     int    `json:"Id"`
-	RegNum string `json:"regNum"`
-	Mark   string `json:"mark"`
-	Model  string `json:"model"`
-	Year   int    `json:"year"`
-	Owner  People `json:"owner"`
-}
-
-type People struct {
-	Id         int    `json:"Id"`
-	Name       string `json:"name"`
-	Surname    string `json:"surname"`
-	Patronymic string `json:"patronymic"`
-}
-
 var cars []Car
 
 func getCars(w http.ResponseWriter, r *http.Request) {

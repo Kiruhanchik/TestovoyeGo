@@ -1,92 +1,78 @@
 package main
 
 import (
-	"encoding/json"
+	"database/sql"
+	"fmt"
 	"log"
+	"log/slog"
 	"net/http"
-	"strconv"
+
+	_ "github.com/lib/pq"
+
+	"github.com/pressly/goose/v3"
+
+	"github.com/Kiruhanchik/TestovoyeGo/internal/services"
+
+	"github.com/Kiruhanchik/TestovoyeGo/internal/config"
 
 	"github.com/gorilla/mux"
 )
 
-var cars []Car
+func runMigrations() {
+	slog.Info("start migration")
 
-func getCars(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(cars)
-}
+	dbConnStr := fmt.Sprintf("user=%v password=%v host=%v port=%v dbname=%v sslmode=disable", config.Cfg.User, config.Cfg.Password, config.Cfg.Host, config.Cfg.DbPort, config.Cfg.DbName)
 
-func deleteCar(w http.ResponseWriter, r *http.Request) {
-	params := mux.Vars(r) // Получаем параметры из URL, в данном случае - ID автомобиля
-	id, err := strconv.Atoi(params["id"])
+	slog.Debug("conn str " + dbConnStr)
+
+	db, err := sql.Open("postgres", dbConnStr)
+
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		return
+		slog.Error(err.Error())
+		log.Fatal(err)
 	}
-
-	for index := range cars {
-		if index == id {
-			cars = append(cars[:index], cars[index+1:]...)
-			w.WriteHeader(http.StatusNoContent) // Возвращаем статус 204 No Content в случае успешного удаления
-			return
-		}
-	}
-
-	w.WriteHeader(http.StatusNotFound) // Возвращаем статус 404 Not Found, если автомобиль не найден
-}
-
-func updateCar(w http.ResponseWriter, r *http.Request) {
-	params := mux.Vars(r)
-	id, err := strconv.Atoi(params["id"])
+	defer db.Close()
+	err = db.Ping()
 	if err != nil {
-		http.Error(w, "Invalid car ID", http.StatusBadRequest)
-		return
+		slog.Error(err.Error())
+		log.Fatal(err)
 	}
 
-	var updatedCar Car
-	err = json.NewDecoder(r.Body).Decode(&updatedCar)
+	err = goose.SetDialect("postgres")
 	if err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
-		return
+		slog.Error(err.Error())
+		log.Fatal(err)
 	}
 
-	if id < 0 || id >= len(cars) {
-		http.Error(w, "Car ID not found", http.StatusNotFound)
-		return
-	}
-
-	cars[id] = updatedCar
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(cars[id])
-}
-
-func addCar(w http.ResponseWriter, r *http.Request) {
-	var requestData struct {
-		RegNums []string `json:"regNums"`
-	}
-
-	err := json.NewDecoder(r.Body).Decode(&requestData)
+	err = goose.Up(db, config.Cfg.MigrationDir)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+		slog.Error(err.Error())
+		log.Fatal(err)
 	}
 
-	for _, regNum := range requestData.RegNums {
-		newCar := Car{RegNum: regNum}
-		cars = append(cars, newCar)
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(requestData)
+	slog.Info("complete migration")
 }
 
 func main() {
+	switch config.Cfg.LogLevel {
+	case "debug":
+		slog.SetLogLoggerLevel(slog.LevelDebug)
+	case "info":
+		slog.SetLogLoggerLevel(slog.LevelInfo)
+	case "warn":
+		slog.SetLogLoggerLevel(slog.LevelWarn)
+	case "error":
+		slog.SetLogLoggerLevel(slog.LevelError)
+	}
+
+	runMigrations()
+
 	router := mux.NewRouter()
 
-	router.HandleFunc("/cars", getCars).Methods("GET")
-	router.HandleFunc("/cars/{id}", deleteCar).Methods("DELETE")
-	router.HandleFunc("/cars/{id}", updateCar).Methods("PATCH")
-	router.HandleFunc("/cars", addCar).Methods("POST")
+	router.HandleFunc("/cars", services.GetCars).Methods("GET")
+	router.HandleFunc("/cars/{id}", services.DeleteCar).Methods("DELETE")
+	router.HandleFunc("/cars/{id}", services.UpdateCar).Methods("PATCH")
+	router.HandleFunc("/cars", services.AddCar).Methods("POST")
 
-	log.Fatal(http.ListenAndServe(":8080", router))
+	log.Fatal(http.ListenAndServe(":"+config.Cfg.HTTPAddr, router))
 }

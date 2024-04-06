@@ -1,0 +1,180 @@
+definitions:
+  models.CarFilter:
+    properties:
+      mark:
+        type: string
+      model:
+        type: string
+      owner:
+        $ref: '#/definitions/models.PeopleFilter'
+      regNum:
+        type: string
+      year:
+        type: integer
+    type: object
+  models.CarRequest:
+    properties:
+      regNums:
+        items:
+          type: string
+        type: array
+    type: object
+  models.PeopleFilter:
+    properties:
+      name:
+        type: string
+      patronymic:
+        type: string
+      surname:
+        type: string
+    type: object
+info:
+  contact: {}
+paths:
+  /cars:
+    get:
+      consumes:
+      - application/json
+      description: GetCars
+      parameters:
+      - description: limit
+        in: query
+        name: limit
+        required: true
+        type: integer
+      - description: offset
+        in: query
+        name: offset
+        required: true
+        type: integer
+      - description: regNum
+        in: query
+        name: regNum
+        type: string
+      - description: mark
+        in: query
+        name: mark
+        type: string
+      - description: model
+        in: query
+        name: model
+        type: string
+      - description: year
+        in: query
+        name: year
+        type: integer
+      - description: owner_name
+        in: query
+        name: owner_name
+        type: string
+      - description: owner_surname
+        in: query
+        name: owner_surname
+        type: string
+      - description: owner_patronymic
+        in: query
+        name: owner_patronymic
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: GetCars
+    post:
+      consumes:
+      - application/json
+      description: AddCar
+      parameters:
+      - description: Body
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CarRequest'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: AddCar
+  /cars/:id:
+    delete:
+      consumes:
+      - application/json
+      description: DeleteCar
+      parameters:
+      - description: id
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: DeleteCar
+    patch:
+      consumes:
+      - application/json
+      description: UpdateCar
+      parameters:
+      - description: id
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Body
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/models.CarFilter'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: string
+        "400":
+          description: Bad Request
+          schema:
+            type: string
+        "500":
+          description: Internal Server Error
+          schema:
+            type: string
+      summary: UpdateCar
+swagger: "2.0"
